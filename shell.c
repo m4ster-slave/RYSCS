@@ -12,10 +12,9 @@
 //TODO
 //fix Whitespace seperating args + ""
 //piping 
-//standart builtins 
-//better enter
-//clear
-//display current file path
+//other standart builtins 
+//clear with ctrl + l 
+//display current file path in name 
 //make emulator
 //history
 
