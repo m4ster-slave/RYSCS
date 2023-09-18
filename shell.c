@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>   // fork exec pid_t 
 #include <sys/wait.h> //waitpid
+                      
 #define LSH_RL_BUFSIZE 1024
 
 #define LSH_TOK_BUFSIZE 64
@@ -13,7 +14,7 @@
 //fix Whitespace seperating args + ""
 //piping 
 //other standart builtins 
-//clear with ctrl + l 
+//clear with ctrl + l --> "tput -x clear" 
 //display current file path in name 
 //make emulator
 //history
@@ -27,6 +28,7 @@ char *builint_str[] =
   "cd",
   "help",
   "exit"
+#include <unistd.h>   // fork exec pid_t 
 };  
 
 int (*builtin_func[]) (char**) = 
@@ -62,7 +64,7 @@ int lsh_cd(char** args)
 int lsh_help(char** args)
 {
   int i;
-  printf("RPG-Shell \n");
+  printf("RYSCS \n");
   printf("Type programs and args and hit enter.\n");
   printf("The following are builin:\n");
 
@@ -219,10 +221,18 @@ void lsh_loop(void)
   char *line;
   char **args;
   int status;
+  char cCurrentPath[FILENAME_MAX]; 
 
   do 
   {
-    printf("> ");
+    if (!getcwd(cCurrentPath, sizeof(cCurrentPath)))
+    {
+      perror("dir name error");
+    }
+
+   cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
+
+    printf("%s > ", cCurrentPath);
     line = lsh_read_line();
     args = lsh_split_line(line);
     status = lsh_execute(args);
@@ -232,6 +242,7 @@ void lsh_loop(void)
   }
   while(status);
 }
+
 
 int main(int argc, char *argv[])
 {
