@@ -15,9 +15,9 @@
 //piping 
 //other standart builtins 
 //clear with ctrl + l --> "tput -x clear" 
-//display current file path in name 
 //make emulator
 //history
+//Autocomplete 
 
 int lsh_cd(char** args);
 int lsh_help(char** args);
