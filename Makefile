@@ -1,13 +1,15 @@
 OBJS := shell.c builtins.c 
 
 CFLAGS_ARGS := -Wall
-CFLAGS_ARGS_DEBUG := -g
+CFLAGS_ARGS_DEBUG := -g -Wall
+CFLAGS_ARGS_WINDOWS := -g -Wall -mwindows 
 
 BIN := RYSCS
 
 LIBS :=
 
 CC := gcc
+CC_WIN := winegcc
 
 install:
 	@echo "Compiling"
@@ -22,3 +24,7 @@ debug:
 clean:
 	@echo "Cleaning up"
 	rm -rf ${BIN} 
+
+windows:
+	@echo "compiling for windows"
+	${CC_WIN} ${OBJS} ${CFLAGS_ARGS_WINDOWS} -o ${BIN} ${LIBS}
