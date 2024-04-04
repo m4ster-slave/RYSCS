@@ -1,6 +1,6 @@
-OBJS := shell.c 
+OBJS := shell.c builtins.c 
 
-CFLAGS_ARGS := 
+CFLAGS_ARGS := -Wall
 CFLAGS_ARGS_DEBUG := -g
 
 BIN := RYSCS

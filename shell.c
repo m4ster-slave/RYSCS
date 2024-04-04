@@ -4,88 +4,24 @@
 #include <string.h>
 #include <unistd.h>   // fork exec pid_t 
 #include <sys/wait.h> //waitpid
+#include "builtins.h"
                       
-#define LSH_RL_BUFSIZE 1024
+#define RL_BUFSIZE 1024
 
-#define LSH_TOK_BUFSIZE 64
-#define LSH_TOK_DELIM " \t\r\n\a"
+#define TOK_BUFSIZE 64
+#define TOK_DELIM " \t\r\n\a"
+
+const int num_builtins = sizeof(builtin_str) / sizeof(builtin_str[0]);
 
 //TODO
 //fix Whitespace seperating args + ""
-//piping 
-//other standart builtins 
-//clear with ctrl + l --> "tput -x clear" 
-//make emulator
 //history
-//Autocomplete 
 
-int lsh_cd(char** args);
-int lsh_help(char** args);
-int lsh_exit(char** args);
 
-char *builint_str[] = 
+//Function reads in a charcater, if the string exceeds a buffer realocate it
+char* read_line(void)
 {
-  "cd",
-  "help",
-  "exit"
-#include <unistd.h>   // fork exec pid_t 
-};  
-
-int (*builtin_func[]) (char**) = 
-{
-  &lsh_cd, 
-  &lsh_help, 
-  &lsh_exit
-};
-
-int lsh_num_builtins()
-{
-  return sizeof(builint_str) / sizeof(char*);
-}
-
-
-//builint function definition
-int lsh_cd(char** args)
-{
-  if (args[1] == NULL)
-  {
-    fprintf(stderr, "lsh: expected argument to \"cd\"\n");
-  }
-  else
-  {
-    if (chdir(args[1]) != 0)
-    {
-      perror("lsh");
-    }
-  }
-  return 1;
-}
-
-int lsh_help(char** args)
-{
-  int i;
-  printf("RYSCS \n");
-  printf("Type programs and args and hit enter.\n");
-  printf("The following are builin:\n");
-
-  for (i = 0; i < lsh_num_builtins(); i++)
-  {
-    printf(" %s\n", builint_str[i]);
-  }
-
-  printf("Use man on other programs.\n");
-  return 1;
-}
-
-int lsh_exit(char** args)
-{
-  return 0;
-}
-
-//Function reads in a charcater, if the strin exceeds a buffer realocate it
-char* lsh_read_line(void)
-{
-  int bufsize = LSH_RL_BUFSIZE;
+  int bufsize = RL_BUFSIZE;
   int pos = 0;
   char* buffer = malloc(sizeof(char)*bufsize);
   int c;
@@ -116,7 +52,7 @@ char* lsh_read_line(void)
     //reallocate 
     if (pos >= bufsize)
     {
-      bufsize += LSH_RL_BUFSIZE;
+      bufsize += RL_BUFSIZE;
       buffer = realloc(buffer, bufsize);
       if (!buffer) 
       {
@@ -127,9 +63,9 @@ char* lsh_read_line(void)
   }
 }
 
-char** lsh_split_line(char *line)
+char** split_line(char *line)
 {
-  int bufsize = LSH_TOK_BUFSIZE, pos = 0;
+  int bufsize = TOK_BUFSIZE, pos = 0;
   char** tokens = malloc(bufsize * sizeof(char*));
   char* token;
 
@@ -139,7 +75,7 @@ char** lsh_split_line(char *line)
     exit(0);
   }
 
-  token = strtok(line, LSH_TOK_DELIM);
+  token = strtok(line, TOK_DELIM);
   while (token != NULL)
   {
     tokens[pos] = token;
@@ -147,7 +83,7 @@ char** lsh_split_line(char *line)
 
     if (pos >= bufsize)
     {
-      bufsize += LSH_TOK_BUFSIZE;
+      bufsize += TOK_BUFSIZE;
       tokens = realloc(tokens, bufsize * sizeof(char*));
       if (!tokens)
       {
@@ -156,7 +92,7 @@ char** lsh_split_line(char *line)
       }
     }
 
-    token = strtok(NULL, LSH_TOK_DELIM);
+    token = strtok(NULL, TOK_DELIM);
 
   }
 
@@ -164,7 +100,7 @@ char** lsh_split_line(char *line)
   return tokens;
 }
 
-int lsh_launch(char** args)
+int launch(char** args)
 {
   pid_t pid, wpid;
   int status;
@@ -181,7 +117,7 @@ int lsh_launch(char** args)
   }
   else if(pid < 0)
   {
-    //something went wrong forking
+    //error forking
     perror("lsh");
   }
   else 
@@ -196,27 +132,26 @@ int lsh_launch(char** args)
   return 1;
 }
 
-int lsh_execute(char** args)
+int execute(char** args)
 {
-  int i;
 
   if (args[0] == NULL)
   {
     return 1;
   }
 
-  for (i = 0; i < lsh_num_builtins(); i++)
+  for (int i = 0; i < num_builtins;i++)
   {
-    if(strcmp(args[0], builint_str[i]) == 0)
+    if(strcmp(args[0], builtin_str[i]) == 0)
     {
       return (*builtin_func[i])(args);
     }
   }
 
-  return lsh_launch(args);
+  return launch(args);
 }
 
-void lsh_loop(void)
+void loop(void)
 {
   char *line;
   char **args;
@@ -233,9 +168,9 @@ void lsh_loop(void)
    cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
 
     printf("%s > ", cCurrentPath);
-    line = lsh_read_line();
-    args = lsh_split_line(line);
-    status = lsh_execute(args);
+    line = read_line();
+    args = split_line(line);
+    status = execute(args);
 
     free(line);
     free(args);
@@ -246,6 +181,6 @@ void lsh_loop(void)
 
 int main(int argc, char *argv[])
 {
-  lsh_loop();
+  loop();
   return 0;
 }
