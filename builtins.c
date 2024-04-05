@@ -1,19 +1,20 @@
 #include "builtins.h"
+#include <stdio.h>
 
 int cd(char** args)
 {
-  if (args[1] == NULL)
-  {
-    fprintf(stderr, "expected argument to \"cd\"\n");
-  }
-  else
-  {
-    if (chdir(args[1]) != 0)
+    if (args[1] == NULL)
     {
-      perror("lsh");
+        fprintf(stderr, "expected argument to \"cd\"\n");
     }
-  }
-  return 1;
+    else
+    {
+        if (chdir(args[1]) != 0)
+        {
+        perror("lsh");
+        }
+    }
+    return 1;
 }
 
 int help()
@@ -21,29 +22,26 @@ int help()
     printf("Type programs and args then hit enter.\n");
     printf("The following functions are builtin:\n");
     printf("\tcd \n\thelp \n\tshell_exit \n\tls \n\tpwd \n\trm \n\tmv \n\tcp \n\tshell_mir \n\tshell_rmdir \n\tshell_chmod \n\tcat \n\ttouch");
-    printf("\nenjoy using the shell :)\n");
+    printf("\nEnjoy using the shell :)\n");
     return 1;
 }
 
 int shell_exit()
 {
-  return 0;
+    return 0;
 }
 
 int ls(char** args)
 {
     int ls_long = 0, show_hidden = 0;
     char cPath[FILENAME_MAX]; 
+    if (getcwd(cPath, sizeof(cPath)) == NULL)
+    {
+        perror("ls error");
+    }
     struct stat stats;
 
-    if (args[1] == NULL)
-    {
-        if (getcwd(cPath, sizeof(cPath)) == NULL)
-        {
-            perror("ls error");
-        }
-    }
-    else 
+    if (args[1] != NULL)
     {
         for (char* c = *++args; c; c=*++args) 
         {
@@ -60,9 +58,16 @@ int ls(char** args)
                 show_hidden = 1;
                 ls_long = 1;
             }
-            else if (stat(c ,&stats) == 0) 
+            else if (opendir(cPath) != NULL) 
             {
                 strcpy(cPath, c); 
+            }
+            else if (strcmp("-h", c) == 0)
+            {
+                printf("Usage: ls <args> <directory>\n");
+                printf("\t-l --> show verbose output\n");
+                printf("\t-a --> show hidden file\n");
+                return 1;
             }
             else 
             {
@@ -96,6 +101,7 @@ int ls(char** args)
 
             //permissions
             mode_t perms = stats.st_mode;
+            printf( (perms & S_IFDIR) ? "d" : "-");
             printf( (perms & S_IRUSR) ? "r" : "-");
             printf( (perms & S_IWUSR) ? "w" : "-");
             printf( (perms & S_IXUSR) ? "x" : "-");
@@ -105,6 +111,22 @@ int ls(char** args)
             printf( (perms & S_IROTH) ? "r" : "-");
             printf( (perms & S_IWOTH) ? "w" : "-");
             printf( (perms & S_IXOTH) ? "x" : "-");
+
+            //owner and group
+            uid_t uid = stats.st_uid;
+            gid_t gid = stats.st_gid;
+            struct passwd *pwd;
+            struct group *grp;
+
+            if ((pwd = getpwuid(uid)) != NULL)
+            {
+                printf(" %-10s", pwd->pw_name);
+            }
+
+            if ((grp = getgrgid(gid)) != NULL)
+            {
+                printf(" %-10s", grp->gr_name);
+            }          
 
             //size
             int bytes = stats.st_size;
@@ -118,16 +140,15 @@ int ls(char** args)
             else 
                 printf(" %4dG", bytes / 1000000000);
 
-
             //file creation time in seconds then convert to date and time format
             struct tm dt;
             time_t current_time;
             char* month[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-            dt = *(gmtime(&stats.st_ctime));
+            dt = *(gmtime(&stats.st_mtime));
             time(&current_time);
             struct tm* curr_time_info = localtime(&current_time);
 
-            printf(" %2d %s", dt.tm_mday, month[dt.tm_mon]);
+            printf(" %3d %3s", dt.tm_mday, month[dt.tm_mon]);
             if (curr_time_info->tm_year - dt.tm_year == 0)
                 printf(" %2d:%02d", dt.tm_hour, dt.tm_min);
             else
@@ -157,6 +178,12 @@ int pwd()
 
 int rm(char** args)
 {
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "expected argument to \"rm\"\n");
+        return 1;
+    }
+    
     for (char* c = *++args; c; c=*++args) 
     {
         printf("removing %s\n", c);
@@ -173,8 +200,11 @@ int rm(char** args)
 
 int mv(char** args)
 {
-   
-    if (rename(args[1], args[2]) == -1) 
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "usage: mv <old_name> <new_name>\n");
+    }
+    else if (rename(args[1], args[2]) == -1) 
     {
         perror("mv error");
         return 1;
@@ -184,7 +214,12 @@ int mv(char** args)
 }
 
 int cp(char** args) 
-{
+{    
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "usage:  <in_file> <out_file>\n");
+    }
+
     int in_file = open(args[1], O_RDONLY);
     if (in_file == -1) 
     {
@@ -231,6 +266,11 @@ int cp(char** args)
 
 int shell_mkdir(char** args)
 {
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "expected argument to \"mkdir\"\n");
+    }
+
     for (char* c = *++args; c; c=*++args) 
     {
         printf("creating %s\n", c);
@@ -246,6 +286,11 @@ int shell_mkdir(char** args)
 
 int shell_rmdir(char** args)
 {
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "expected argument to \"rmdir\"\n");
+    }
+
     for (char* c = *++args; c; c=*++args) 
     {
         printf("removing %s\n", c);
@@ -261,14 +306,41 @@ int shell_rmdir(char** args)
 
 int shell_chmod(char** args)
 {
-    int permissions = atoi(args[1]);
-    chmod(args[2], permissions);
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "usage chmod <permissions> <file>\n");
+    } 
+    else
+    {
+        char* permissionStr = args[1];
+        while (*permissionStr != '\0') 
+        {
+            if (*permissionStr < '0' || *permissionStr > '7') 
+            {
+                fprintf(stderr, "Invalid permission: %s\n", args[1]);
+                return 1;
+            }
+            permissionStr++;
+        }
+    }
+
+    // convert octal input to correct mode_t numeric value
+    mode_t permissions = (mode_t) strtol(args[1], NULL, 8);
+    if (chmod(args[2], permissions) == -1) 
+    {
+        perror("chmod");
+    }
     
     return 1;
 }
 
 int cat(char** args)
 {
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "expected argument to \"cat\"\n");
+    }
+
     for (char* c = *++args; c; c=*++args) 
     {
         FILE *file;
@@ -292,7 +364,12 @@ int cat(char** args)
 }
 
 int touch(char** args)
-{
+{    
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "expected argument to \"touch\"\n");
+    }
+
     for (char* c = *++args; c; c=*++args) 
     {
         printf("creating %s\n", c);

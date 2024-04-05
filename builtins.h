@@ -23,6 +23,8 @@ int touch(char** args);
 #include <fcntl.h>
 #include <sys/sendfile.h>
 #include <time.h>
+#include <pwd.h>
+#include <grp.h>
 
 #define BUFSIZE             1024
 #define TOK_BUFSIZE         64
