@@ -1,13 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>  
-#include <sys/stat.h>
-#include <dirent.h>
-#include <string.h>
-#include <fcntl.h>
-#include <sys/sendfile.h>
-#include <time.h>
-
+#include "builtins.h"
 
 int cd(char** args)
 {
@@ -25,16 +16,16 @@ int cd(char** args)
   return 1;
 }
 
-int help(char** args)
+int help()
 {
-  printf("RYSCS \n");
-  printf("Type programs and args and hit enter.\n");
-  printf("The following are builin:\n");
-  printf("Use man on other programs.\n");
-  return 1;
+    printf("Type programs and args then hit enter.\n");
+    printf("The following functions are builtin:\n");
+    printf("\tcd \n\thelp \n\tshell_exit \n\tls \n\tpwd \n\trm \n\tmv \n\tcp \n\tshell_mir \n\tshell_rmdir \n\tshell_chmod \n\tcat \n\ttouch");
+    printf("\nenjoy using the shell :)\n");
+    return 1;
 }
 
-int shell_exit(char** args)
+int shell_exit()
 {
   return 0;
 }
@@ -43,16 +34,17 @@ int ls(char** args)
 {
     int ls_long = 0, show_hidden = 0;
     char cPath[FILENAME_MAX]; 
-	struct dirent *d;
     struct stat stats;
 
     if (args[1] == NULL)
     {
-        getcwd(cPath, sizeof(cPath));
+        if (getcwd(cPath, sizeof(cPath)) == NULL)
+        {
+            perror("ls error");
+        }
     }
     else 
     {
-        //see if -l is set
         for (char* c = *++args; c; c=*++args) 
         {
             if (strcmp("-l", c) == 0)
@@ -74,58 +66,91 @@ int ls(char** args)
             }
             else 
             {
-                printf("invalid number of arguments or not a direcotry\n");
+                fprintf(stderr, "ls error: invalid arguments");
             }
         }
     }
 
+	struct dirent *d;
 	DIR *dh = opendir(cPath);
+    if (dh == NULL) 
+    {
+        perror("error opening directory");
+        return 1;
+    }
 
-	//While the next entry is not readable print directory files
+	//while the next entry is not readable print directory files
 	while ((d = readdir(dh)) != NULL)
 	{
+        //if the user didnt enable hidden skip files that begin with '.'
         if (d->d_name[0] == '.' && !show_hidden) continue;
 
-        if (ls_long) {
+        //if the user enabled long output print file info
+        if (ls_long) 
+        {
+            if (stat(d->d_name, &stats) == -1) {
+                perror("stat error");
+                return 1;
+            }
+
+
+            //permissions
+            mode_t perms = stats.st_mode;
+            printf( (perms & S_IRUSR) ? "r" : "-");
+            printf( (perms & S_IWUSR) ? "w" : "-");
+            printf( (perms & S_IXUSR) ? "x" : "-");
+            printf( (perms & S_IRGRP) ? "r" : "-");
+            printf( (perms & S_IWGRP) ? "w" : "-");
+            printf( (perms & S_IXGRP) ? "x" : "-");
+            printf( (perms & S_IROTH) ? "r" : "-");
+            printf( (perms & S_IWOTH) ? "w" : "-");
+            printf( (perms & S_IXOTH) ? "x" : "-");
+
+            //size
+            int bytes = stats.st_size;
+
+            if (bytes < 1000) 
+                printf(" %4dB", bytes);
+            else if (bytes < 1000000) 
+                printf(" %4dK", bytes / 1000);
+            else if (bytes < 1000000000) 
+                printf(" %4dM", bytes / 1000000);
+            else 
+                printf(" %4dG", bytes / 1000000000);
+
+
+            //file creation time in seconds then convert to date and time format
             struct tm dt;
-            stat(d->d_name, &stats);
-
-            // File permissions
-            if (stats.st_mode & R_OK)
-                printf("read ");
-            if (stats.st_mode & W_OK)
-                printf("write ");
-            if (stats.st_mode & X_OK)
-                printf("execute ");
-
-            // File size
-            printf("size: %ld ", stats.st_size);
-
-            // Get file creation time in seconds and 
-            // convert seconds to date and time format
+            time_t current_time;
+            char* month[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
             dt = *(gmtime(&stats.st_ctime));
-            printf("created: %d-%d-%d %d:%d:%d ", dt.tm_mday, dt.tm_mon, dt.tm_year + 1900, 
-                                              dt.tm_hour, dt.tm_min, dt.tm_sec);
+            time(&current_time);
+            struct tm* curr_time_info = localtime(&current_time);
 
-            // File modification time
-            dt = *(gmtime(&stats.st_mtime));
-            printf("modified: %d-%d-%d %d:%d:%d ", dt.tm_mday, dt.tm_mon, dt.tm_year + 1900, 
-                                              dt.tm_hour, dt.tm_min, dt.tm_sec);
+            printf(" %2d %s", dt.tm_mday, month[dt.tm_mon]);
+            if (curr_time_info->tm_year - dt.tm_year == 0)
+                printf(" %2d:%02d", dt.tm_hour, dt.tm_min);
+            else
+                printf(" %5d", dt.tm_year + 1900);                  
+
         }
-        
-	    printf("%s ", d->d_name);
-
+	    printf(" %s ", d->d_name);
         if(ls_long) printf("\n");
+
 	}
-    printf("\n");
+    if(!ls_long) printf("\n");
+
     return 1;
 }
 
 
-int pwd(char** args)
+int pwd()
 {
     char cPath[FILENAME_MAX]; 
-    getcwd(cPath, sizeof(cPath));
+    if (getcwd(cPath, sizeof(cPath)) == NULL)
+    {
+        perror("pwd error");
+    }
     printf("%s\n", cPath);
     return 1;
 }
@@ -135,7 +160,12 @@ int rm(char** args)
     for (char* c = *++args; c; c=*++args) 
     {
         printf("removing %s\n", c);
-        unlink(c);
+
+        if (unlink(c) == -1) 
+        {
+            perror("remove error");
+            return 1;
+        }
     }
          
     return 1;
@@ -143,7 +173,13 @@ int rm(char** args)
 
 int mv(char** args)
 {
-    rename(args[1], args[2]);
+   
+    if (rename(args[1], args[2]) == -1) 
+    {
+        perror("mv error");
+        return 1;
+    }
+
     return 1;
 }
 
@@ -152,22 +188,22 @@ int cp(char** args)
     int in_file = open(args[1], O_RDONLY);
     if (in_file == -1) 
     {
-        perror("Error opening input file");
+        perror("error opening input file");
         return 1;
     }
 
-    int out_file = open(args[2], O_WRONLY | O_CREAT | O_TRUNC, 0666); // rw-rw-rw-
+    int out_file = open(args[2], O_WRONLY | O_CREAT | O_TRUNC, READ_PERMISSIONS); // rw-rw-rw-
     if (out_file == -1) 
     {
-        perror("Error opening output file");
-        close(in_file); // Close the input file descriptor before returning
+        perror("error opening output file");
+        close(in_file); //close the input file descriptor before returning
         return 1;
     }
 
     struct stat stat_buf;
     if (fstat(in_file, &stat_buf) == -1) 
     {
-        perror("Error getting input file size");
+        perror("error getting input file size");
         close(in_file);
         close(out_file);
         return 1;
@@ -181,7 +217,7 @@ int cp(char** args)
             perror("Error copying file");
             close(in_file);
             close(out_file);
-            unlink(args[2]);
+            unlink(args[2]); //remove file we wrote to if error occurs
             return 1;
         }
     }
@@ -189,7 +225,7 @@ int cp(char** args)
     close(in_file);
     close(out_file);
 
-   return 1;
+    return 1;
 }
 
 
@@ -198,9 +234,9 @@ int shell_mkdir(char** args)
     for (char* c = *++args; c; c=*++args) 
     {
         printf("creating %s\n", c);
-        if (mkdir(c, 0777) == -1)
+        if (mkdir(c, EXEC_PERMISSIONS) == -1)
         {
-            printf("couldnt create file\n");
+            perror("mkdir error");
             return 1;
         }
     }
@@ -213,7 +249,11 @@ int shell_rmdir(char** args)
     for (char* c = *++args; c; c=*++args) 
     {
         printf("removing %s\n", c);
-        rmdir(c);
+        if (rmdir(c) == -1) 
+        {
+            perror("rmdir error");
+            return 1;
+        }
     }
 
     return 1;
@@ -221,6 +261,8 @@ int shell_rmdir(char** args)
 
 int shell_chmod(char** args)
 {
+    int permissions = atoi(args[1]);
+    chmod(args[2], permissions);
     
     return 1;
 }
@@ -230,15 +272,16 @@ int cat(char** args)
     for (char* c = *++args; c; c=*++args) 
     {
         FILE *file;
-
         file = fopen(c, "r");
-        if(file == NULL) {
-            printf("Failed to open file %s\n", c);
+        if(file == NULL) 
+        {
+            perror("file open error");
+            return 1;
         }
 
-        char buff[100];
-
-        while(fgets(buff, 100, file)) {
+        char buff[BUFSIZE];
+        while(fgets(buff, BUFSIZE, file)) 
+        {
           printf("%s", buff);
         }
 
@@ -253,8 +296,8 @@ int touch(char** args)
     for (char* c = *++args; c; c=*++args) 
     {
         printf("creating %s\n", c);
-        int out_file = open(c, O_CREAT, 0666); // rw-rw-rw-
-        
+        int out_file = open(c, O_CREAT, READ_PERMISSIONS); // rw-rw-rw-
+
         if (out_file == -1) 
         {
             perror("Error creating file");
@@ -267,3 +310,4 @@ int touch(char** args)
 
    return 1;
 }
+

@@ -1,27 +1,48 @@
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>   // fork exec pid_t 
-#include <sys/wait.h> //waitpid
 #include "builtins.h"
-                      
-#define RL_BUFSIZE 1024
-
-#define TOK_BUFSIZE 64
-#define TOK_DELIM " \t\r\n\a"
-
-const int num_builtins = sizeof(builtin_str) / sizeof(builtin_str[0]);
-
 //TODO
 //fix Whitespace seperating args + ""
 //history
+                      
+//definition of function pointers
+int (*builtin_func[]) (char**) = 
+{
+    &cd, 
+    &help, 
+    &shell_exit,
+    &ls,
+    &pwd,
+    &rm,
+    &mv,
+    &cp,
+    &shell_mkdir,
+    &shell_rmdir,
+    &shell_chmod,
+    &cat,
+    &touch,
+};
 
+//defintion of builtins to loop thru before calling exec 
+char *builtin_str[] = 
+{
+    (char*)"cd",
+    (char*)"help",
+    (char*)"exit",
+    (char*)"ls",
+    (char*)"pwd",
+    (char*)"rm",
+    (char*)"mv",
+    (char*)"cp",
+    (char*)"mkdir",
+    (char*)"rmdir",
+    (char*)"chmod",
+    (char*)"cat",
+    (char*)"touch",
+}; 
 
 //Function reads in a charcater, if the string exceeds a buffer realocate it
 char* read_line(void)
 {
-  int bufsize = RL_BUFSIZE;
+  int bufsize = BUFSIZE;
   int pos = 0;
   char* buffer = malloc(sizeof(char)*bufsize);
   int c;
@@ -52,7 +73,7 @@ char* read_line(void)
     //reallocate 
     if (pos >= bufsize)
     {
-      bufsize += RL_BUFSIZE;
+      bufsize += BUFSIZE;
       buffer = realloc(buffer, bufsize);
       if (!buffer) 
       {
@@ -102,7 +123,7 @@ char** split_line(char *line)
 
 int launch(char** args)
 {
-  pid_t pid, wpid;
+  pid_t pid, _wpid;
   int status;
 
   pid = fork();
@@ -125,7 +146,7 @@ int launch(char** args)
     //parent process
     do 
     {
-    wpid = waitpid(pid, &status, WUNTRACED);
+    _wpid = waitpid(pid, &status, WUNTRACED);
     }while (!WIFEXITED(status) && !WIFSIGNALED(status));
   }
 
@@ -134,13 +155,12 @@ int launch(char** args)
 
 int execute(char** args)
 {
-
   if (args[0] == NULL)
   {
     return 1;
   }
 
-  for (int i = 0; i < num_builtins;i++)
+  for (int i = 0; i < (int)(sizeof(builtin_str) / sizeof(builtin_str[0])); i++)
   {
     if(strcmp(args[0], builtin_str[i]) == 0)
     {
@@ -167,7 +187,7 @@ void loop(void)
 
    cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; /* not really required */
 
-    printf("%s > ", cCurrentPath);
+    printf("\x1b[31m\x1b[1m%s $ \x1b[0m", cCurrentPath);
     line = read_line();
     args = split_line(line);
     status = execute(args);
@@ -179,8 +199,9 @@ void loop(void)
 }
 
 
-int main(int argc, char *argv[])
+int main(void)
 {
   loop();
   return 0;
 }
+

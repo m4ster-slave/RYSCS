@@ -1,8 +1,8 @@
 int cd(char** args);
-int help(char** args);
-int shell_exit(char** args);
+int help();
+int shell_exit();
 int ls(char** args);
-int pwd(char** args);
+int pwd();
 int rm(char** args);
 int mv(char** args);
 int cp(char** args);
@@ -12,37 +12,21 @@ int shell_chmod(char** args);
 int cat(char** args);
 int touch(char** args);
 
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/wait.h> //waitpid
+#include <unistd.h>  
+#include <sys/stat.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/sendfile.h>
+#include <time.h>
 
-int (*builtin_func[]) (char**) = 
-{
-    &cd, 
-    &help, 
-    &shell_exit,
-    &ls,
-    &pwd,
-    &rm,
-    &mv,
-    &cp,
-    &shell_mkdir,
-    &shell_rmdir,
-    &shell_chmod,
-    &cat,
-    &touch,
-};
+#define BUFSIZE             1024
+#define TOK_BUFSIZE         64
+#define TOK_DELIM           " \t\r\n\a"
+#define READ_PERMISSIONS    0666
+#define EXEC_PERMISSIONS    0777
 
-char *builtin_str[] = 
-{
-    "cd",
-    "help",
-    "exit",
-    "ls",
-    "pwd",
-    "rm",
-    "mv",
-    "cp",
-    "mkdir",
-    "rmdir",
-    "chmod",
-    "cat",
-    "touch",
-}; 
