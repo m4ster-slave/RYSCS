@@ -1,8 +1,8 @@
 OBJS := shell.c builtins.c 
 
-CFLAGS_ARGS := -Wall
-CFLAGS_ARGS_DEBUG := -g -Wall
-CFLAGS_ARGS_WINDOWS := -g -Wall -mwindows 
+CFLAGS_ARGS := -Wall -Wextra
+CFLAGS_ARGS_DEBUG := -g -Wall -Wextra 
+CFLAGS_ARGS_WINDOWS := -g -Wall -mwindows -Wextra
 
 BIN := RYSCS
 
