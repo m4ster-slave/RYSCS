@@ -11,6 +11,7 @@ int shell_rmdir(char** args);
 int shell_chmod(char** args);
 int cat(char** args);
 int touch(char** args);
+int clear();
 
 #include <signal.h>
 #include <stdio.h>

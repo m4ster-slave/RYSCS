@@ -136,6 +136,7 @@ int execute(char** args)
         &shell_chmod,
         &cat,
         &touch,
+        &clear,
     };
 
     //defintion of builtins to loop thru before calling exec 
@@ -154,6 +155,7 @@ int execute(char** args)
         (char*)"chmod",
         (char*)"cat",
         (char*)"touch",
+        (char*)"clear",
     }; 
 
     if (args[0] == NULL)

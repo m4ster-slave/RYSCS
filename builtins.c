@@ -1,5 +1,4 @@
 #include "builtins.h"
-#include <stdio.h>
 
 int cd(char** args)
 {
@@ -388,3 +387,18 @@ int touch(char** args)
    return 1;
 }
 
+int clear()
+{
+    //print ANSI escape codes to clear terminal (should work on all major enviroment)
+    //  \x1b[3J: Clears the entire screen and deletes all lines in the scrollback buffer.
+    //  \x1b[H: Moves the cursor to the top-left corner of the terminal.
+    //  \x1b[2J: Clears the entire screen without affecting the scrollback buffer.
+    printf("\x1b[3J\x1b[H\x1b[2J");
+    return 1;
+}
+
+
+/* 2. **grep**: Search for patterns in files. */
+/* 7. **ps**: Report a snapshot of the current processes. */
+/* 8. **kill**: Terminate processes by ID or name. */
+/* 16. **wc**: Count lines, words, and characters in files. */
