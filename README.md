@@ -6,20 +6,16 @@
 
 
 ## TODO
-- [ ] fix Whitespace seperating args + ""
-- [ ] piping 
-- [ ] other standart builtins of bash 
-- [ ] clear with ctrl + l --> "tput -x clear" 
-- [ ] history
-- [ ] A good autocomplete implementation like in fish
+- [ ] rmdir recursive  WIN + UNIX
+
+## EXTRA BUILTINS 
+- **grep**: Search for patterns in files. 
+- **ps**: Report a snapshot of the current processes. 
+- **kill**: Terminate processes by ID or name. 
+- **wc**: Count lines, words, and characters in files.
 
 ## How to run
 To run the shell right now, 
     - clone the repo
     - run ```make```
     - run ```./RYSCS```
-
-## builtins
-- cd (changes the cwd of the process(the shell))
-- help (prints basic info about the shell)
-- exit (exits out of the shell into where you started it from)
