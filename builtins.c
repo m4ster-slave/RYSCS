@@ -38,7 +38,6 @@ int ls(char** args)
     {
         perror("ls error");
     }
-    struct stat stats;
 
     if (args[1] != NULL)
     {
@@ -89,46 +88,19 @@ int ls(char** args)
         //if the user didnt enable hidden skip files that begin with '.'
         if (d->d_name[0] == '.' && !show_hidden) continue;
 
-        //if the user enabled long output print file info
+
+            //if the user enabled long output print file info
         if (ls_long) 
         {
-            if (stat(d->d_name, &stats) == -1) {
-                perror("stat error");
-                return 1;
-            }
+#ifdef _WIN32
+        WIN32_FIND_DATA stats;
 
+        HANDLE hFind = FindFirstFile(d->d_name, &stats);
 
-            //permissions
-            mode_t perms = stats.st_mode;
-            printf( (perms & S_IFDIR) ? "d" : "-");
-            printf( (perms & S_IRUSR) ? "r" : "-");
-            printf( (perms & S_IWUSR) ? "w" : "-");
-            printf( (perms & S_IXUSR) ? "x" : "-");
-            printf( (perms & S_IRGRP) ? "r" : "-");
-            printf( (perms & S_IWGRP) ? "w" : "-");
-            printf( (perms & S_IXGRP) ? "x" : "-");
-            printf( (perms & S_IROTH) ? "r" : "-");
-            printf( (perms & S_IWOTH) ? "w" : "-");
-            printf( (perms & S_IXOTH) ? "x" : "-");
-
-            //owner and group
-            uid_t uid = stats.st_uid;
-            gid_t gid = stats.st_gid;
-            struct passwd *pwd;
-            struct group *grp;
-
-            if ((pwd = getpwuid(uid)) != NULL)
-            {
-                printf(" %-10s", pwd->pw_name);
-            }
-
-            if ((grp = getgrgid(gid)) != NULL)
-            {
-                printf(" %-10s", grp->gr_name);
-            }          
-
-            //size
-            int bytes = stats.st_size;
+        if (hFind != INVALID_HANDLE_VALUE) 
+        {
+            //size 
+            int bytes = stats.nFileSizeLow;
 
             if (bytes < 1000) 
                 printf(" %4dB", bytes);
@@ -138,21 +110,99 @@ int ls(char** args)
                 printf(" %4dM", bytes / 1000000);
             else 
                 printf(" %4dG", bytes / 1000000000);
+            
+            SYSTEMTIME stUTC, stLocal;
+            FILETIME ftCreate;
 
-            //file creation time in seconds then convert to date and time format
-            struct tm dt;
-            time_t current_time;
+            SYSTEMTIME stCurrent;
+            GetSystemTime(&stCurrent);
+
+            // Extract the file creation time
+            ftCreate = stats.ftCreationTime;
+
+            // Convert the file time to local time
+            FileTimeToSystemTime(&ftCreate, &stUTC);
+            SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
+
             char* month[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-            dt = *(gmtime(&stats.st_mtime));
-            time(&current_time);
-            struct tm* curr_time_info = localtime(&current_time);
 
-            printf(" %3d %3s", dt.tm_mday, month[dt.tm_mon]);
-            if (curr_time_info->tm_year - dt.tm_year == 0)
-                printf(" %2d:%02d", dt.tm_hour, dt.tm_min);
+            // Print the formatted creation time
+            printf("%3d %3s", stLocal.wDay, month[stLocal.wMonth - 1]);
+            if (stLocal.wYear == stCurrent.wYear)
+                printf(" %2d:%02d", stLocal.wHour, stLocal.wMinute);
             else
-                printf(" %5d", dt.tm_year + 1900);                  
+                printf(" %5d", stLocal.wYear);
 
+            FindClose(hFind);
+        }
+        else 
+        {
+            fprintf(stderr, "FindFirstFile failed (%lu)\n", GetLastError());
+        }
+#else
+        struct stat stats;
+        if (stat(d->d_name, &stats) == -1) 
+        {
+            perror("stat error");
+            return 1;
+        }
+
+        //permissions
+        mode_t perms = stats.st_mode;
+        printf( (perms & S_IFDIR) ? "d" : "-");
+        printf( (perms & S_IRUSR) ? "r" : "-");
+        printf( (perms & S_IWUSR) ? "w" : "-");
+        printf( (perms & S_IXUSR) ? "x" : "-");
+        printf( (perms & S_IRGRP) ? "r" : "-");
+        printf( (perms & S_IWGRP) ? "w" : "-");
+        printf( (perms & S_IXGRP) ? "x" : "-");
+        printf( (perms & S_IROTH) ? "r" : "-");
+        printf( (perms & S_IWOTH) ? "w" : "-");
+        printf( (perms & S_IXOTH) ? "x" : "-");
+
+        //owner and group
+        uid_t uid = stats.st_uid;
+        gid_t gid = stats.st_gid;
+        struct passwd *pwd;
+        struct group *grp;
+
+        if ((pwd = getpwuid(uid)) != NULL)
+        {
+            printf(" %-10s", pwd->pw_name);
+        }
+
+        if ((grp = getgrgid(gid)) != NULL)
+        {
+            printf(" %-10s", grp->gr_name);
+        }          
+
+        //size
+        int bytes = stats.st_size;
+
+        if (bytes < 1000) 
+            printf(" %4dB", bytes);
+        else if (bytes < 1000000) 
+            printf(" %4dK", bytes / 1000);
+        else if (bytes < 1000000000) 
+            printf(" %4dM", bytes / 1000000);
+        else 
+            printf(" %4dG", bytes / 1000000000);
+
+        //file creation time in seconds then convert to date and time format
+        struct tm dt;
+        time_t current_time;
+        char* month[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        dt = *(gmtime(&stats.st_mtime));
+        time(&current_time);
+        struct tm* curr_time_info = localtime(&current_time);
+
+        printf(" %3d %3s", dt.tm_mday, month[dt.tm_mon]);
+        if (curr_time_info->tm_year - dt.tm_year == 0)
+            printf(" %2d:%02d", dt.tm_hour, dt.tm_min);
+        else
+            printf(" %5d", dt.tm_year + 1900);                  
+
+#endif
         }
 	    printf(" %s ", d->d_name);
         if(ls_long) printf("\n");
@@ -162,7 +212,6 @@ int ls(char** args)
 
     return 1;
 }
-
 
 int pwd()
 {
@@ -218,7 +267,17 @@ int cp(char** args)
     {
         fprintf(stderr, "usage:  <in_file> <out_file>\n");
     }
-
+#ifdef _WIN32
+    if(!CopyFile(
+        args[1],
+        args[2],
+        0
+    ))
+    {
+        fprintf(stderr, "copying failed (%lu)\n", GetLastError());
+        return 1;
+    }
+#else 
     int in_file = open(args[1], O_RDONLY);
     if (in_file == -1) 
     {
@@ -247,7 +306,8 @@ int cp(char** args)
     while (offset < stat_buf.st_size) 
     {
         ssize_t bytes_sent = sendfile(out_file, in_file, &offset, stat_buf.st_size - offset);
-        if (bytes_sent == -1) {
+        if (bytes_sent == -1) 
+        {
             perror("Error copying file");
             close(in_file);
             close(out_file);
@@ -258,6 +318,7 @@ int cp(char** args)
 
     close(in_file);
     close(out_file);
+#endif
 
     return 1;
 }
@@ -270,14 +331,22 @@ int shell_mkdir(char** args)
         fprintf(stderr, "expected argument to \"mkdir\"\n");
     }
 
-    for (char* c = *++args; c; c=*++args) 
+    for (char* c = *++args; c; c=*++args)
     {
         printf("creating %s\n", c);
+#ifdef _WIN32
+        if (mkdir(c) == -1)
+        {
+            fprintf(stderr, "making directory failed(%lu)\n", GetLastError());
+            return 1;
+        }
+#else 
         if (mkdir(c, EXEC_PERMISSIONS) == -1)
         {
             perror("mkdir error");
             return 1;
         }
+#endif
     }
 
     return 1;
@@ -300,36 +369,6 @@ int shell_rmdir(char** args)
         }
     }
 
-    return 1;
-}
-
-int shell_chmod(char** args)
-{
-    if (args[1] == NULL || args[2] == NULL)
-    {
-        fprintf(stderr, "usage chmod <permissions> <file>\n");
-    } 
-    else
-    {
-        char* permissionStr = args[1];
-        while (*permissionStr != '\0') 
-        {
-            if (*permissionStr < '0' || *permissionStr > '7') 
-            {
-                fprintf(stderr, "Invalid permission: %s\n", args[1]);
-                return 1;
-            }
-            permissionStr++;
-        }
-    }
-
-    // convert octal input to correct mode_t numeric value
-    mode_t permissions = (mode_t) strtol(args[1], NULL, 8);
-    if (chmod(args[2], permissions) == -1) 
-    {
-        perror("chmod");
-    }
-    
     return 1;
 }
 
@@ -387,6 +426,37 @@ int touch(char** args)
    return 1;
 }
 
+#ifdef __linux__
+int shell_chmod(char** args)
+{
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "usage chmod <permissions> <file>\n");
+    } 
+    else
+    {
+        char* permissionStr = args[1];
+        while (*permissionStr != '\0') 
+        {
+            if (*permissionStr < '0' || *permissionStr > '7') 
+            {
+                fprintf(stderr, "Invalid permission: %s\n", args[1]);
+                return 1;
+            }
+            permissionStr++;
+        }
+    }
+
+    // convert octal input to correct mode_t numeric value
+    mode_t permissions = (mode_t) strtol(args[1], NULL, 8);
+    if (chmod(args[2], permissions) == -1) 
+    {
+        perror("chmod");
+    }
+    
+    return 1;
+}
+
 int clear()
 {
     //print ANSI escape codes to clear terminal (should work on all major enviroment)
@@ -396,9 +466,4 @@ int clear()
     printf("\x1b[3J\x1b[H\x1b[2J");
     return 1;
 }
-
-
-/* 2. **grep**: Search for patterns in files. */
-/* 7. **ps**: Report a snapshot of the current processes. */
-/* 8. **kill**: Terminate processes by ID or name. */
-/* 16. **wc**: Count lines, words, and characters in files. */
+#endif

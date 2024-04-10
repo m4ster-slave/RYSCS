@@ -84,36 +84,62 @@ char** split_line(char *line)
     return tokens;
 }
 
-int launch(char** args)
-{
-    pid_t pid;
-    int status;
+int launch(char** args) {
+#ifdef _WIN32
+    // Windows specific code
+    PROCESS_INFORMATION pi;
+    STARTUPINFO si;
+    ZeroMemory(&si, sizeof(si));
+    si.cb = sizeof(si);
 
-    //fork the process parent waits while child executes the given program
-    pid = fork();
-    if (pid == 0)
+    if (!CreateProcess(
+            NULL, 
+            args[0], 
+            NULL, 
+            NULL, 
+            FALSE, 
+            0, 
+            NULL, 
+            NULL, 
+            &si, 
+            &pi
+    )) 
     {
-        //child process
-        if (execvp(args[0], args) == -1)
+        fprintf(stderr, "CreateProcess failed (%lu)\n", GetLastError());
+        return 1;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+#else
+    int status = 0;
+    //fork the process parent waits while child executes the given program
+    pid_t pid = fork();
+
+    if (pid == 0) 
+    {
+        // Child process
+        if (execvp(args[0], args) == -1) 
         {
             perror("shell");
         }
-        exit(0);
-    }
-    else if(pid < 0)
+        exit(EXIT_FAILURE);
+    } 
+    else if (pid < 0) 
     {
-        //error forking
         perror("shell");
-    }
+    } 
     else 
     {
-        //parent process
+        // Parent process
         do 
         {
             waitpid(pid, &status, WUNTRACED);
-        }
+        } 
         while (!WIFEXITED(status) && !WIFSIGNALED(status));
     }
+#endif
 
     return 1;
 }
@@ -133,10 +159,12 @@ int execute(char** args)
         &cp,
         &shell_mkdir,
         &shell_rmdir,
-        &shell_chmod,
         &cat,
         &touch,
+#ifdef __linux__ 
+        &shell_chmod,
         &clear,
+#endif
     };
 
     //defintion of builtins to loop thru before calling exec 
@@ -152,10 +180,12 @@ int execute(char** args)
         (char*)"cp",
         (char*)"mkdir",
         (char*)"rmdir",
-        (char*)"chmod",
         (char*)"cat",
         (char*)"touch",
+#ifdef __linux__ 
+        (char*)"chmod",
         (char*)"clear",
+#endif
     }; 
 
     if (args[0] == NULL)
@@ -192,7 +222,11 @@ void loop(void)
 
         cCurrentPath[sizeof(cCurrentPath) - 1] = '\0'; //not really required 
 
+#ifdef _WIN32
+        printf("%s $ ", cCurrentPath);
+#else
         printf("\x1b[31m\x1b[1m%s $ \x1b[0m", cCurrentPath);
+#endif
         line = read_line();
         args = split_line(line);
         status = execute(args);
@@ -206,7 +240,6 @@ void loop(void)
 
 int main(void)
 {
-  loop();
-  return EXIT_SUCCESS;
+    loop();
+    return EXIT_SUCCESS;
 }
-
