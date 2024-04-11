@@ -22,6 +22,7 @@ int clear();
 #include <dirent.h>
 #include <fcntl.h>
 #include <time.h>
+#include <errno.h>
 
 #ifdef _WIN32
     #include <windows.h>

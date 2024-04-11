@@ -352,21 +352,88 @@ int shell_mkdir(char** args)
     return 1;
 }
 
-int shell_rmdir(char** args)
+int shell_rmdir(char **args) 
 {
-    if (args[1] == NULL)
+    if (args[1] == NULL) 
     {
         fprintf(stderr, "expected argument to \"rmdir\"\n");
+        return 1;
     }
 
-    for (char* c = *++args; c; c=*++args) 
+    int recursive = 0; 
+    char *target_dir = NULL;
+
+    // Check for "-r" option
+    if (strcmp(args[1], "-r") == 0) 
     {
-        printf("removing %s\n", c);
-        if (rmdir(c) == -1) 
+        if (args[2] == NULL) 
         {
-            perror("rmdir error");
+            fprintf(stderr, "expected directory argument after \"-r\"\n");
             return 1;
         }
+        recursive = 1;
+        target_dir = args[2];
+    } 
+    else 
+    {
+        target_dir = args[1];
+    }
+
+    // Check if the directory exists
+    if (opendir(target_dir) == NULL) 
+    {
+        perror("opendir error");
+        return 1;
+    }
+
+    // If recursive option is set, iterate over the directory contents and delete recursively
+    if (recursive) 
+    {
+        DIR *dir = opendir(target_dir);
+        if (dir == NULL) 
+        {
+            perror("opendir error");
+            return 1;
+        }
+
+        struct dirent *entry;
+        while ((entry = readdir(dir)) != NULL) 
+        {
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            // Construct full path
+            char *path = malloc(strlen(target_dir) + strlen(entry->d_name) + 2);
+            sprintf(path, "%s/%s", target_dir, entry->d_name);
+
+            // Check if the entry is a directory
+            DIR *subdir = opendir(path);
+            if (subdir != NULL) 
+            {
+                closedir(subdir);
+                // Recursive call to delete the subdirectory
+                char *args[] = {"rmdir", "-r", path, NULL};
+                shell_rmdir(args);
+            } 
+            else 
+            {
+                // Remove regular file
+                if (remove(path) == -1) 
+                {
+                    perror("remove error");
+                    return 1;
+                }
+            }
+            free(path);
+        }
+        closedir(dir);
+    }
+
+    // Remove the target directory itself
+    if (rmdir(target_dir) == -1) 
+    {
+        perror("rmdir error");
+        return 1;
     }
 
     return 1;
