@@ -27,6 +27,7 @@ int clear();
 #ifdef _WIN32
     #include <windows.h>
 #else
+    #include <sys/utsname.h>
     #include <sys/sendfile.h>
     #include <sys/stat.h>
     #include <grp.h>

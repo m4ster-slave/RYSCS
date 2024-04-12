@@ -225,7 +225,20 @@ void loop(void)
 #ifdef _WIN32
         printf("%s $ ", cCurrentPath);
 #else
-        printf("\x1b[31m\x1b[1m%s $ \x1b[0m", cCurrentPath);
+        char *username = getlogin();
+        if (username == NULL) {
+            perror("getlogin");
+            exit(EXIT_FAILURE);
+        }
+
+        struct utsname unameData;
+        if (uname(&unameData) == -1) {
+            perror("uname");
+            exit(EXIT_FAILURE);
+        }
+        char *hostname = unameData.nodename;
+
+        printf("\x1b[34;1;3m%s@%s \x1b[0m\x1b[31m\x1b[1m%s $ \x1b[0m", username, hostname, cCurrentPath);
 #endif
         line = read_line();
         args = split_line(line);
