@@ -161,7 +161,10 @@ int execute(char** args)
         &shell_rmdir,
         &cat,
         &touch,
+        &wc,
+        &grep,
 #ifdef __linux__ 
+        &shell_kill,
         &shell_chmod,
         &clear,
 #endif
@@ -182,7 +185,10 @@ int execute(char** args)
         (char*)"rmdir",
         (char*)"cat",
         (char*)"touch",
+        (char*)"wc",
+        (char*)"grep",
 #ifdef __linux__ 
+        (char*)"kill",
         (char*)"chmod",
         (char*)"clear",
 #endif

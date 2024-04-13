@@ -20,9 +20,10 @@ int help()
 {
     printf("Type programs and args then hit enter.\n");
     printf("The following functions are builtin:\n");
-    printf("\tcd \n\thelp \n\tshell_exit \n\tls \n\tpwd \n\trm \n\tmv \n\tcp \n\tshell_mir \n\tshell_rmdir \n\tshell_chmod \n\tcat \n\ttouch");
+    printf("\t- cd \n\t- help \n\t- exit \n\t- ls \n\t- pwd \n\t- rm \n\t- mv \n\t- cp \n\t- mkdir \n\t- rmdir \n\t- cat \n\t- touch \n\t- wc \n\t- grep \n\t- kill \n\t- chmod \n\t- clear");
     printf("\nEnjoy using the shell :)\n");
     return 1;
+
 }
 
 int shell_exit()
@@ -70,6 +71,7 @@ int ls(char** args)
             else 
             {
                 fprintf(stderr, "ls error: invalid arguments");
+                return 1;
             }
         }
     }
@@ -138,6 +140,7 @@ int ls(char** args)
         else 
         {
             fprintf(stderr, "FindFirstFile failed (%lu)\n", GetLastError());
+            return 1;
         }
 #else
         struct stat stats;
@@ -266,6 +269,7 @@ int cp(char** args)
     if (args[1] == NULL || args[2] == NULL)
     {
         fprintf(stderr, "usage:  <in_file> <out_file>\n");
+        return 1;
     }
 #ifdef _WIN32
     if(!CopyFile(
@@ -493,12 +497,151 @@ int touch(char** args)
    return 1;
 }
 
+int wc(char** args) 
+{
+    if (args[1] == NULL) 
+    {
+        fprintf(stderr, "usage: wc <file>...\n");
+        return 1; 
+    }
+
+    for (char* c = *++args; c; c = *++args) 
+    {
+        FILE* file = fopen(c, "r");
+        if (file == NULL) 
+        {
+            fprintf(stderr, "Could not open file: %s\n", c);
+            continue; 
+        }
+
+        long int lines = 0;
+        long int words = 0;
+        long int chars = 0;
+
+        char buf[BUFSIZE];
+
+        while (fgets(buf, BUFSIZE, file) != NULL) 
+        {
+            lines++;
+
+            int in_word = 0; 
+
+            for (int i = 0; buf[i] != '\0'; i++) 
+            {
+                if (buf[i] == ' ' || buf[i] == '\n' || buf[i] == '\t') 
+                {
+                    if (in_word) 
+                    {
+                        in_word = 0;
+                        words++;
+                    }
+                } 
+                else 
+                {
+                    in_word = 1;
+                }
+                chars++;
+            }
+        }
+
+        printf("lines: %ld words: %ld characters: %ld \t %s\n", lines, words, chars, c);
+        
+        fclose(file); 
+    }
+
+    return 1; 
+}
+
+int grep(char** args)
+{
+    if (args[1] == NULL || args[2] == NULL)
+    {
+        fprintf(stderr, "usage grep <search_string> <file>\n");
+        return 1;
+    }
+
+    FILE* file = fopen(args[2], "r");
+    if (file == NULL) 
+    {
+        fprintf(stderr, "error opening file %s\n", args[2]);
+        return 1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* content = (char*)malloc(file_size + 1); 
+    if (content == NULL) 
+    {
+        fprintf(stderr, "memory allocation failed\n");
+        fclose(file);
+        return 1;
+    }
+
+    // Read the file content into the allocated memory
+    size_t bytes_read = fread(content, 1, file_size, file);
+    content[bytes_read] = '\0'; 
+
+    fclose(file);
+    
+    //split into lines 
+    int bufsize = TOK_BUFSIZE; 
+    int pos = 0;
+    char** lines = malloc(bufsize * sizeof(char*));
+    char* conten_token;
+
+    if (!lines)
+    {
+        fprintf(stderr, "allocation error when trying to spilt the lines\n");
+        return 1;
+    }
+
+    conten_token = strtok(content, "\n");
+    while (conten_token != NULL)
+    {
+        lines[pos] = conten_token;
+        pos++;
+
+        if (pos >= bufsize)
+        {
+            bufsize += TOK_BUFSIZE;
+            lines = realloc(lines , bufsize * sizeof(char*));
+            if (!lines)
+            {
+                fprintf(stderr, "reallocation error\n");
+                exit(0);
+            }
+        }
+
+        conten_token = strtok(NULL, "\n");
+    }
+
+    lines[pos] = NULL;
+
+    
+    //iterate over lines and print the line if substring is found
+    int line_cnt = 0;
+    for (char* c = *++lines; c; c=*++lines) 
+    {
+        if (strstr(c, args[1]) != NULL) 
+        {
+            printf("line %d:\t %s\n", line_cnt, c); 
+        }
+
+        line_cnt++;
+    }
+    
+    return 1;
+}
+
 #ifdef __linux__
 int shell_chmod(char** args)
 {
     if (args[1] == NULL || args[2] == NULL)
     {
         fprintf(stderr, "usage chmod <permissions> <file>\n");
+        return 1;
     } 
     else
     {
@@ -515,7 +658,7 @@ int shell_chmod(char** args)
     }
 
     // convert octal input to correct mode_t numeric value
-    mode_t permissions = (mode_t) strtol(args[1], NULL, 8);
+    mode_t permissions = strtol(args[1], NULL, 8);
     if (chmod(args[2], permissions) == -1) 
     {
         perror("chmod");
@@ -531,6 +674,20 @@ int clear()
     //  \x1b[H: Moves the cursor to the top-left corner of the terminal.
     //  \x1b[2J: Clears the entire screen without affecting the scrollback buffer.
     printf("\x1b[3J\x1b[H\x1b[2J");
+    return 1;
+}
+
+int shell_kill(char** args)
+{ 
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "usage kill <pid>n");
+    }
+    else if(kill(atoi(args[1]), SIGTERM) == -1)
+    {
+        perror("kill");
+    }
+
     return 1;
 }
 #endif

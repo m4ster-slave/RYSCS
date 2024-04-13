@@ -10,7 +10,10 @@ int shell_mkdir(char** args);
 int shell_rmdir(char** args);
 int cat(char** args);
 int touch(char** args);
+int wc(char** args);
+int grep(char** args);
 #ifdef __linux__ 
+int shell_kill(char** args);
 int shell_chmod(char** args);
 int clear();
 #endif
@@ -23,6 +26,7 @@ int clear();
 #include <fcntl.h>
 #include <time.h>
 #include <errno.h>
+#include <signal.h>
 
 #ifdef _WIN32
     #include <windows.h>
