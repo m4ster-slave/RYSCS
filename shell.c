@@ -1,7 +1,4 @@
 #include "builtins.h"
-//TODO
-//fix Whitespace seperating args + ""
-//(history)
 
 //Function reads in a charcater, if the string exceeds a buffer realocate it
 char* read_line(void)

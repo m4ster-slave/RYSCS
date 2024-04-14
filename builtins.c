@@ -390,7 +390,7 @@ int shell_rmdir(char **args)
         return 1;
     }
 
-    // If recursive option is set, iterate over the directory contents and delete recursively
+    // if recursive option is set, iterate over the directory contents and delete recursively
     if (recursive) 
     {
         DIR *dir = opendir(target_dir);
@@ -406,11 +406,11 @@ int shell_rmdir(char **args)
             if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
                 continue;
 
-            // Construct full path
+            // make full path
             char *path = malloc(strlen(target_dir) + strlen(entry->d_name) + 2);
             sprintf(path, "%s/%s", target_dir, entry->d_name);
 
-            // Check if the entry is a directory
+            // check if the entry is a directory
             DIR *subdir = opendir(path);
             if (subdir != NULL) 
             {
@@ -421,7 +421,7 @@ int shell_rmdir(char **args)
             } 
             else 
             {
-                // Remove regular file
+                // regular file
                 if (remove(path) == -1) 
                 {
                     perror("remove error");
