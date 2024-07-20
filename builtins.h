@@ -44,6 +44,6 @@ int clear();
 #define BUFSIZE             1024
 #define TOK_BUFSIZE         64
 #define TOK_DELIM           " \t\r\n\a"
-define READ_PERMISSIONS    0666
+#define READ_PERMISSIONS    0666
 #define EXEC_PERMISSIONS    0777
 
